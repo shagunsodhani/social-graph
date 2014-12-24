@@ -1,7 +1,9 @@
 import time
 from json import loads
 from collections import defaultdict
+import matplotlib.pyplot as plt
 import requests
+import networkx as nx
 import db
 
 class Github():
@@ -25,6 +27,7 @@ class Github():
         '''
         self.followers = defaultdict(list)
         self.followers_list = []
+        self.edge = []
         temp_list = [user]
         self.followers_list.append(temp_list)
         count = 0
@@ -42,6 +45,7 @@ class Github():
                             login = str(i['login'])
                             temp_list.append(login)
                             temp_followers_list.append(login)
+                            self.edge.insert((user, login))
                         self.followers[user] = temp_list
                     else:
                         for i in self.followers[user]:
@@ -84,11 +88,26 @@ class Github():
                 for user in self.followers_list[count]:
                     for i in self.followers[user]:
                         temp_followers_list.append(i)
+                        self.edge.append((user, i))
                 self.followers_list.append(temp_followers_list)
                 count+=1
 
+    def plot_followers(self, user, depth = 2):
+        '''
+        '''
+        self.fetch_followers(user = user, depth = depth)
+        g = nx.DiGraph()
+        g.add_edges_from(self.edge)
+        print "Number of Nodes ", g.number_of_nodes()
+        print "Number of Edges ", g.number_of_edges()
+        # g=nx.Graph()
+        nx.draw_graphviz(g)
+        plt.show()
+
+
 if __name__ == "__main__":
-    g = Github(offline = 0)
-    g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    for i in g.followers_list:
-        print i
+    g = Github(offline = 1)
+    # g.fetch_followers(user = 'shagunsodhani', depth = 1)
+    g.plot_followers(user = 'shagunsodhani', depth = 0)
+    # for i in g.followers_list:
+    #     print i
