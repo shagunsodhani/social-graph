@@ -7,13 +7,17 @@ class Github():
     '''
     '''
 
-    def __init__(self, offline = 1):
+    def __init__(self, offline = 1, log = 1):
         json_data=open('config/config.json').read()
         data = loads(json_data)
         self.token = str(data['github_access_token'])
         self.params = {'access_token':self.token}
         self.root_url = "https://api.github.com"
-        self.offline = offline
+        self.options = {}
+        self.options['offline'] = offline
+        self.options['log'] = log 
+        self.cursor = db.connect()
+        self.conn = self.cursor.conn()
 
     def fetch_followers(self, user, depth = 2):
         '''
@@ -23,7 +27,7 @@ class Github():
         temp_list = [user]
         self.followers_list.append(temp_list)
         count = 0
-        if self.offline == 0:
+        if self.options['offline'] == 0:
             while count <= depth:
                 temp_followers_list = []
                 for user in self.followers_list[count]:
@@ -42,6 +46,31 @@ class Github():
                             temp_followers_list.append(i)
                 self.followers_list.append(temp_followers_list)
                 count+=1
+            if self.options['log'] == 1:
+                sql = "UPDATE followers SET is_deleted = 1"
+                db.write(sql, self.cursor, self.conn)
+                
+                sql_base = "INSERT INTO followers (user1, user2, is_deleted) VALUES "
+                sql = sql_base
+                sql_end = " ON DUPLICATE KEY UPDATE is_deleted=0"
+                count = 1
+                for i in self.followers:
+                    for j in self.followers[i]:
+                        sql+="(\'"+i+"\', \'"+j+"\', 0), "
+                        count+=1
+                        if(count%10000==0):
+                            sql = sql[:-2]
+                            sql+=sql_end
+                            db.write(sql, self.cursor, self.conn)
+                            print count, " insertions completed."
+                            sql = sql_base
+                sql = sql[:-2]
+                sql+=sql_end
+                db.write(sql, self.cursor, self.conn)
+                print count, " insertions completed."
+
+                sql = "DELETE FROM followers WHERE is_deleted = 1"
+                db.write(sql, self.cursor, self.conn)
         else:
             sql="SELECT user1, user2 FROM followers WHERE is_deleted=0"
             result = db.read(sql, self.cursor)
