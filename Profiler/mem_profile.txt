@@ -1,0 +1,76 @@
+Filename: github.py
+
+Line #    Mem usage    Increment   Line Contents
+================================================
+    25   29.375 MiB    0.000 MiB       @profile    
+    26                                 def fetch_followers(self, user, depth = 2):
+    27                                     '''
+    28                                     '''
+    29   29.379 MiB    0.004 MiB           self.followers = defaultdict(list)
+    30   29.379 MiB    0.000 MiB           self.followers_list = []
+    31   29.379 MiB    0.000 MiB           self.edge = []
+    32   29.379 MiB    0.000 MiB           temp_list = [user]
+    33   29.379 MiB    0.000 MiB           self.followers_list.append(temp_list)
+    34   29.379 MiB    0.000 MiB           count = 0
+    35   29.379 MiB    0.000 MiB           if self.options['offline'] == 0:
+    36                                         while count <= depth:
+    37                                             temp_followers_list = []
+    38                                             for user in self.followers_list[count]:
+    39                                                 if user not in self.followers:
+    40                                                     print user
+    41                                                     url = self.root_url+"/users/"+user+"/followers"
+    42                                                     response = requests.get(url, params = self.params)
+    43                                                     r = response.json()
+    44                                                     temp_list = []
+    45                                                     for i in r:
+    46                                                         login = str(i['login'])
+    47                                                         temp_list.append(login)
+    48                                                         temp_followers_list.append(login)
+    49                                                         self.edge.append((user, login))
+    50                                                     self.followers[user] = temp_list
+    51                                                 else:
+    52                                                     for i in self.followers[user]:
+    53                                                         temp_followers_list.append(i)
+    54                                             self.followers_list.append(temp_followers_list)
+    55                                             count+=1
+    56                                         if self.options['log'] == 1:
+    57                                             sql = "UPDATE followers SET is_deleted = 2 WHERE is_deleted = 0"
+    58                                             db.write(sql, self.cursor, self.conn)
+    59                             
+    60                                             sql_base = "INSERT INTO followers (user1, user2, is_deleted) VALUES "
+    61                                             sql = sql_base
+    62                                             sql_end = " ON DUPLICATE KEY UPDATE is_deleted=0"
+    63                                             count = 1
+    64                                             for i in self.followers:
+    65                                                 for j in self.followers[i]:
+    66                                                     sql+="(\'"+i+"\', \'"+j+"\', 0), "
+    67                                                     count+=1
+    68                                                     if(count%10000==0):
+    69                                                         sql = sql[:-2]
+    70                                                         sql+=sql_end
+    71                                                         db.write(sql, self.cursor, self.conn)
+    72                                                         print count, " insertions completed."
+    73                                                         sql = sql_base
+    74                                             sql = sql[:-2]
+    75                                             sql+=sql_end
+    76                                             db.write(sql, self.cursor, self.conn)
+    77                                             print count, " insertions completed."
+    78                                             sql = "DELETE FROM followers WHERE is_deleted != 0"
+    79                                             db.write(sql, self.cursor, self.conn)
+    80                                     else:
+    81   29.379 MiB    0.000 MiB               sql="SELECT user1, user2 FROM followers WHERE is_deleted=0"
+    82   29.781 MiB    0.402 MiB               result = db.read(sql, self.cursor)
+    83   29.789 MiB    0.008 MiB               for i in result:
+    84   29.789 MiB    0.000 MiB                   user1 = i[0]
+    85   29.789 MiB    0.000 MiB                   user2 = i[1]
+    86   29.789 MiB    0.000 MiB                   self.followers[user1].append(user2)
+    87   30.215 MiB    0.426 MiB               while count<=depth:
+    88   29.809 MiB   -0.406 MiB                   temp_followers_list = []
+    89   30.215 MiB    0.406 MiB                   for user in self.followers_list[count]:
+    90   30.215 MiB    0.000 MiB                       for i in self.followers[user]:
+    91   30.215 MiB    0.000 MiB                           temp_followers_list.append(i)
+    92   30.215 MiB    0.000 MiB                           self.edge.append((user, i))
+    93   30.215 MiB    0.000 MiB                   self.followers_list.append(temp_followers_list)
+    94   30.215 MiB    0.000 MiB                   count+=1
+
+

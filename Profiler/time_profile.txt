@@ -1,0 +1,80 @@
+Wrote profile results to github.py.lprof
+Timer unit: 1e-06 s
+
+Total time: 0.110585 s
+File: github.py
+Function: fetch_followers at line 25
+
+Line #      Hits         Time  Per Hit   % Time  Line Contents
+==============================================================
+    25                                               @profile    
+    26                                               def fetch_followers(self, user, depth = 2):
+    27                                                   '''
+    28                                                   '''
+    29         1           15     15.0      0.0          self.followers = defaultdict(list)
+    30         1            3      3.0      0.0          self.followers_list = []
+    31         1            1      1.0      0.0          self.edge = []
+    32         1            2      2.0      0.0          temp_list = [user]
+    33         1            2      2.0      0.0          self.followers_list.append(temp_list)
+    34         1            2      2.0      0.0          count = 0
+    35         1            2      2.0      0.0          if self.options['offline'] == 0:
+    36                                                       while count <= depth:
+    37                                                           temp_followers_list = []
+    38                                                           for user in self.followers_list[count]:
+    39                                                               if user not in self.followers:
+    40                                                                   print user
+    41                                                                   url = self.root_url+"/users/"+user+"/followers"
+    42                                                                   response = requests.get(url, params = self.params)
+    43                                                                   r = response.json()
+    44                                                                   temp_list = []
+    45                                                                   for i in r:
+    46                                                                       login = str(i['login'])
+    47                                                                       temp_list.append(login)
+    48                                                                       temp_followers_list.append(login)
+    49                                                                       self.edge.append((user, login))
+    50                                                                   self.followers[user] = temp_list
+    51                                                               else:
+    52                                                                   for i in self.followers[user]:
+    53                                                                       temp_followers_list.append(i)
+    54                                                           self.followers_list.append(temp_followers_list)
+    55                                                           count+=1
+    56                                                       if self.options['log'] == 1:
+    57                                                           sql = "UPDATE followers SET is_deleted = 2 WHERE is_deleted = 0"
+    58                                                           db.write(sql, self.cursor, self.conn)
+    59                                           
+    60                                                           sql_base = "INSERT INTO followers (user1, user2, is_deleted) VALUES "
+    61                                                           sql = sql_base
+    62                                                           sql_end = " ON DUPLICATE KEY UPDATE is_deleted=0"
+    63                                                           count = 1
+    64                                                           for i in self.followers:
+    65                                                               for j in self.followers[i]:
+    66                                                                   sql+="(\'"+i+"\', \'"+j+"\', 0), "
+    67                                                                   count+=1
+    68                                                                   if(count%10000==0):
+    69                                                                       sql = sql[:-2]
+    70                                                                       sql+=sql_end
+    71                                                                       db.write(sql, self.cursor, self.conn)
+    72                                                                       print count, " insertions completed."
+    73                                                                       sql = sql_base
+    74                                                           sql = sql[:-2]
+    75                                                           sql+=sql_end
+    76                                                           db.write(sql, self.cursor, self.conn)
+    77                                                           print count, " insertions completed."
+    78                                                           sql = "DELETE FROM followers WHERE is_deleted != 0"
+    79                                                           db.write(sql, self.cursor, self.conn)
+    80                                                   else:
+    81         1            3      3.0      0.0              sql="SELECT user1, user2 FROM followers WHERE is_deleted=0"
+    82         1         5729   5729.0      5.2              result = db.read(sql, self.cursor)
+    83      2709         4717      1.7      4.3              for i in result:
+    84      2708         4784      1.8      4.3                  user1 = i[0]
+    85      2708         4823      1.8      4.4                  user2 = i[1]
+    86      2708         5787      2.1      5.2                  self.followers[user1].append(user2)
+    87         4            7      1.8      0.0              while count<=depth:
+    88         3            5      1.7      0.0                  temp_followers_list = []
+    89       665         1061      1.6      1.0                  for user in self.followers_list[count]:
+    90     13084        40517      3.1     36.6                      for i in self.followers[user]:
+    91     12422        20931      1.7     18.9                          temp_followers_list.append(i)
+    92     12422        22182      1.8     20.1                          self.edge.append((user, i))
+    93         3            6      2.0      0.0                  self.followers_list.append(temp_followers_list)
+    94         3            6      2.0      0.0                  count+=1
+

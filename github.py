@@ -22,6 +22,7 @@ class Github():
         self.conn = db.connect()
         self.cursor = self.conn.cursor()
 
+    @profile    
     def fetch_followers(self, user, depth = 2):
         '''
         '''
@@ -45,7 +46,7 @@ class Github():
                             login = str(i['login'])
                             temp_list.append(login)
                             temp_followers_list.append(login)
-                            self.edge.insert((user, login))
+                            self.edge.append((user, login))
                         self.followers[user] = temp_list
                     else:
                         for i in self.followers[user]:
@@ -92,6 +93,7 @@ class Github():
                 self.followers_list.append(temp_followers_list)
                 count+=1
 
+    # @profile
     def plot_followers(self, user, depth = 2):
         '''
         '''
@@ -107,7 +109,8 @@ class Github():
 
 if __name__ == "__main__":
     g = Github(offline = 1)
+    g.fetch_followers(user = 'shagunsodhani', depth = 2)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    g.plot_followers(user = 'shagunsodhani', depth = 0)
+    # g.plot_followers(user = 'shagunsodhani', depth = 1)
     # for i in g.followers_list:
     #     print i
