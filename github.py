@@ -1,5 +1,6 @@
 import time
 from json import loads
+from collections import defaultdict
 import requests
 import db
 
@@ -16,8 +17,8 @@ class Github():
         self.options = {}
         self.options['offline'] = offline
         self.options['log'] = log 
-        self.cursor = db.connect()
-        self.conn = self.cursor.conn()
+        self.conn = db.connect()
+        self.cursor = self.conn.cursor()
 
     def fetch_followers(self, user, depth = 2):
         '''
@@ -32,6 +33,7 @@ class Github():
                 temp_followers_list = []
                 for user in self.followers_list[count]:
                     if user not in self.followers:
+                        print user
                         url = self.root_url+"/users/"+user+"/followers"
                         response = requests.get(url, params = self.params)
                         r = response.json()
@@ -39,7 +41,7 @@ class Github():
                         for i in r:
                             login = str(i['login'])
                             temp_list.append(login)
-                            temp_followers_list.append(i)
+                            temp_followers_list.append(login)
                         self.followers[user] = temp_list
                     else:
                         for i in self.followers[user]:
@@ -47,9 +49,9 @@ class Github():
                 self.followers_list.append(temp_followers_list)
                 count+=1
             if self.options['log'] == 1:
-                sql = "UPDATE followers SET is_deleted = 1"
+                sql = "UPDATE followers SET is_deleted = 2 WHERE is_deleted = 0"
                 db.write(sql, self.cursor, self.conn)
-                
+
                 sql_base = "INSERT INTO followers (user1, user2, is_deleted) VALUES "
                 sql = sql_base
                 sql_end = " ON DUPLICATE KEY UPDATE is_deleted=0"
@@ -68,8 +70,7 @@ class Github():
                 sql+=sql_end
                 db.write(sql, self.cursor, self.conn)
                 print count, " insertions completed."
-
-                sql = "DELETE FROM followers WHERE is_deleted = 1"
+                sql = "DELETE FROM followers WHERE is_deleted != 0"
                 db.write(sql, self.cursor, self.conn)
         else:
             sql="SELECT user1, user2 FROM followers WHERE is_deleted=0"
@@ -86,10 +87,8 @@ class Github():
                 self.followers_list.append(temp_followers_list)
                 count+=1
 
-                    
-
-
-g = Github()
-g.fetch_followers(user = 'shagunsodhani')
-for i in g.followers_list:
-    print i
+if __name__ == "__main__":
+    g = Github(offline = 0)
+    g.fetch_followers(user = 'shagunsodhani', depth = 1)
+    for i in g.followers_list:
+        print i
