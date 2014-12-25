@@ -22,11 +22,12 @@ class Github():
         self.conn = db.connect()
         self.cursor = self.conn.cursor()
 
-    @profile    
+    # @profile    
     def fetch_followers(self, user, depth = 2):
         '''
         '''
         self.followers = defaultdict(list)
+        self.follower_count = defaultdict(int)
         self.followers_list = []
         self.edge = []
         temp_list = [user]
@@ -48,6 +49,7 @@ class Github():
                             temp_followers_list.append(login)
                             self.edge.append((user, login))
                         self.followers[user] = temp_list
+                        self.follower_count[user] = len(temp_list)
                     else:
                         for i in self.followers[user]:
                             temp_followers_list.append(i)
@@ -81,9 +83,10 @@ class Github():
             sql="SELECT user1, user2 FROM followers WHERE is_deleted=0"
             result = db.read(sql, self.cursor)
             for i in result:
-                user1 = i[0]
-                user2 = i[1]
-                self.followers[user1].append(user2)
+                # user1 = i[0]
+                # user2 = i[1]
+                # self.followers[user1].append(user2)
+                self.followers[i[0]].append(i[1])
             while count<=depth:
                 temp_followers_list = []
                 for user in self.followers_list[count]:
@@ -92,25 +95,56 @@ class Github():
                         self.edge.append((user, i))
                 self.followers_list.append(temp_followers_list)
                 count+=1
-
+            for i in self.followers:
+                self.follower_count[i] = len(self.followers[i])
     # @profile
-    def plot_followers(self, user, depth = 2):
+    def gen_graph(self, user, depth = 2):
         '''
         '''
-        self.fetch_followers(user = user, depth = depth)
-        g = nx.DiGraph()
-        g.add_edges_from(self.edge)
-        print "Number of Nodes ", g.number_of_nodes()
-        print "Number of Edges ", g.number_of_edges()
-        # g=nx.Graph()
-        nx.draw_graphviz(g)
+        self.fetch_followers(user = user, depth = depth+1)
+        self.g = nx.DiGraph()
+        self.g.add_edges_from(self.edge)
+        # for i in self.g.node:
+        #     print i
+        #     print self.follower_count[i]
+        #     self.g.node[i]['weight'] = self.follower_count[i]
+        self.max_followers =  max(self.follower_count.values())    
+        print "Number of Nodes ", self.g.number_of_nodes()
+        print "Number of Edges ", self.g.number_of_edges()
+
+    def plot_followers(self):
+        '''
+        '''
+        node_size = []
+        node_color = []
+        for i in self.g.nodes():
+            if self.follower_count[i] == 0:
+                node_color.append('r')
+                node_size.append(500)
+            else:
+                node_size.append(1000*float(self.follower_count[i])/self.max_followers)
+                print (1000*float(self.follower_count[i])/self.max_followers)
+                print i
+                print self.follower_count[i]
+                print "\n"
+                node_color.append('b')
+
+        nx.draw_graphviz(self.g, with_labels = True, linewidth = 0.1, node_size = node_size, node_color = node_color)
         plt.show()
 
+    def print_distance_measures(self):
+        '''
+        '''
+        print type(nx.center(self.g))
+    
 
 if __name__ == "__main__":
     g = Github(offline = 1)
-    g.fetch_followers(user = 'shagunsodhani', depth = 2)
+    # g.fetch_followers(user = 'shagunsodhani', depth = 2)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    # g.plot_followers(user = 'shagunsodhani', depth = 1)
+    g.gen_graph(user = 'shagunsodhani', depth = 0)
+    g.plot_followers()
+    # g.print_distance_measures()
+    # self.pyplot
     # for i in g.followers_list:
     #     print i
