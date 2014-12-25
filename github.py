@@ -14,7 +14,7 @@ class Github():
         json_data=open('config/config.json').read()
         data = loads(json_data)
         self.token = str(data['github_access_token'])
-        self.params = {'access_token':self.token}
+        self.params = {'access_token':self.token, 'per_page':100}
         self.root_url = "https://api.github.com"
         self.options = {}
         self.options['offline'] = offline
@@ -39,15 +39,21 @@ class Github():
                 for user in self.followers_list[count]:
                     if user not in self.followers:
                         print user
+                        # https://api.github.com/users/shagunsodhani/followers?page=1&per_page=100
                         url = self.root_url+"/users/"+user+"/followers"
+                        self.params['page']=1
                         response = requests.get(url, params = self.params)
                         r = response.json()
                         temp_list = []
-                        for i in r:
-                            login = str(i['login'])
-                            temp_list.append(login)
-                            temp_followers_list.append(login)
-                            self.edge.append((user, login))
+                        while r:
+                            for i in r:
+                                login = str(i['login'])
+                                temp_list.append(login)
+                                temp_followers_list.append(login)
+                                self.edge.append((user, login))
+                            self.params['page']+=1
+                            response = requests.get(url, params = self.params)
+                            r = response.json()
                         self.followers[user] = temp_list
                         self.follower_count[user] = len(temp_list)
                     else:
@@ -76,7 +82,7 @@ class Github():
                 sql = sql[:-2]
                 sql+=sql_end
                 db.write(sql, self.cursor, self.conn)
-                print count, " insertions completed."
+                print count-1, " insertions completed."
                 sql = "DELETE FROM followers WHERE is_deleted != 0"
                 db.write(sql, self.cursor, self.conn)
         else:
@@ -101,7 +107,7 @@ class Github():
     def gen_graph(self, user, depth = 2):
         '''
         '''
-        self.fetch_followers(user = user, depth = depth+1)
+        self.fetch_followers(user = user, depth = depth)
         self.g = nx.DiGraph()
         self.g.add_edges_from(self.edge)
         # for i in self.g.node:
@@ -120,16 +126,16 @@ class Github():
         for i in self.g.nodes():
             if self.follower_count[i] == 0:
                 node_color.append('r')
-                node_size.append(500)
+                node_size.append(150)
             else:
-                node_size.append(1000*float(self.follower_count[i])/self.max_followers)
-                print (1000*float(self.follower_count[i])/self.max_followers)
+                node_size.append(300*float(self.follower_count[i])/self.max_followers)
+                print (300*float(self.follower_count[i])/self.max_followers)
                 print i
                 print self.follower_count[i]
                 print "\n"
                 node_color.append('b')
 
-        nx.draw_graphviz(self.g, with_labels = True, linewidth = 0.1, node_size = node_size, node_color = node_color)
+        nx.draw_graphviz(self.g, with_labels = False, linewidth = 0.1, node_size = node_size, node_color = node_color)
         plt.show()
 
     def print_distance_measures(self):
@@ -140,9 +146,9 @@ class Github():
 
 if __name__ == "__main__":
     g = Github(offline = 1)
-    # g.fetch_followers(user = 'shagunsodhani', depth = 2)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    g.gen_graph(user = 'shagunsodhani', depth = 0)
+    # g.fetch_followers(user = 'shagunsodhani', depth = 1)
+    g.gen_graph(user = 'shagunsodhani', depth = 1)
     g.plot_followers()
     # g.print_distance_measures()
     # self.pyplot
