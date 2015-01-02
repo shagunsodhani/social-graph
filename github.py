@@ -145,10 +145,10 @@ class Github():
     
 
 if __name__ == "__main__":
-    g = Github(offline = 1)
+    g = Github(offline = 0)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    g.gen_graph(user = 'shagunsodhani', depth = 1)
+    g.gen_graph(user = 'shagunsodhani', depth = 5)
     g.plot_followers()
     # g.print_distance_measures()
     # self.pyplot
