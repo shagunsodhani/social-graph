@@ -104,6 +104,89 @@ class Github():
             for i in self.followers:
                 self.follower_count[i] = len(self.followers[i])
     # @profile
+
+    def fetch_following(self, user, depth = 2):
+        '''
+        '''
+        self.following = defaultdict(list)
+        self.following_count = defaultdict(int)
+        self.following_list = []
+        self.edge = []
+        temp_list = [user]
+        self.following_list.append(temp_list)
+        count = 0
+        if self.options['offline'] == 0:
+            while count <= depth:
+                temp_following_list = []
+                for user in self.following_list[count]:
+                    if user not in self.following:
+                        print user
+                        # https://api.github.com/users/shagunsodhani/following?page=1&per_page=100
+                        url = self.root_url+"/users/"+user+"/following"
+                        self.params['page']=1
+                        response = requests.get(url, params = self.params)
+                        r = response.json()
+                        temp_list = []
+                        while r:
+                            for i in r:
+                                login = str(i['login'])
+                                temp_list.append(login)
+                                temp_following_list.append(login)
+                                self.edge.append((user, login))
+                            self.params['page']+=1
+                            response = requests.get(url, params = self.params)
+                            r = response.json()
+                        self.following[user] = temp_list
+                        self.following_count[user] = len(temp_list)
+                    else:
+                        for i in self.following[user]:
+                            temp_following_list.append(i)
+                self.following_list.append(temp_following_list)
+                count+=1
+            if self.options['log'] == 1:
+                sql = "UPDATE following SET is_deleted = 2 WHERE is_deleted = 0"
+                db.write(sql, self.cursor, self.conn)
+
+                sql_base = "INSERT INTO following (user1, user2, is_deleted) VALUES "
+                sql = sql_base
+                sql_end = " ON DUPLICATE KEY UPDATE is_deleted=0"
+                count = 1
+                for i in self.following:
+                    for j in self.following[i]:
+                        sql+="(\'"+i+"\', \'"+j+"\', 0), "
+                        count+=1
+                        if(count%10000==0):
+                            sql = sql[:-2]
+                            sql+=sql_end
+                            db.write(sql, self.cursor, self.conn)
+                            print count, " insertions completed."
+                            sql = sql_base
+                sql = sql[:-2]
+                sql+=sql_end
+                db.write(sql, self.cursor, self.conn)
+                print count-1, " insertions completed."
+                sql = "DELETE FROM following WHERE is_deleted != 0"
+                db.write(sql, self.cursor, self.conn)
+        else:
+            sql="SELECT user1, user2 FROM following WHERE is_deleted=0"
+            result = db.read(sql, self.cursor)
+            if result:
+                for i in result:
+                    # user1 = i[0]
+                    # user2 = i[1]
+                    # self.following[user1].append(user2)
+                    self.following[i[0]].append(i[1])
+            while count<=depth:
+                temp_following_list = []
+                for user in self.following_list[count]:
+                    for i in self.following[user]:
+                        temp_following_list.append(i)
+                        self.edge.append((user, i))
+                self.following_list.append(temp_following_list)
+                count+=1
+            for i in self.following:
+                self.following_count[i] = len(self.following[i])
+
     def gen_graph(self, user, depth = 2):
         '''
         '''
@@ -146,10 +229,11 @@ class Github():
 
 if __name__ == "__main__":
     g = Github(offline = 0)
+    g.fetch_following(user = 'shagunsodhani', depth = 0)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
     # g.fetch_followers(user = 'shagunsodhani', depth = 1)
-    g.gen_graph(user = 'shagunsodhani', depth = 5)
-    g.plot_followers()
+    # g.gen_graph(user = 'shagunsodhani', depth = 5)
+    # g.plot_followers()
     # g.print_distance_measures()
     # self.pyplot
     # for i in g.followers_list:
