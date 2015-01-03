@@ -3,7 +3,11 @@
 import os
 import math
 from json import loads
-import MySQLdb
+
+try:
+    import MySQLdb
+except ImportError as exc:
+    print("Error: failed to import settings module ({})".format(exc))
 
 def connect():
     '''
